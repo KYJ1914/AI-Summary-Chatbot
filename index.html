@@ -1,0 +1,182 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 대학생 요약 전문가</title>
+    <style>
+        /* 기본 스타일 설정 */
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        p.desc {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .api-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f1f3f5;
+            white-space: pre-wrap; /* 줄바꿈 유지 */
+            display: none; /* 결과가 없을 때는 숨김 */
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            margin-top: 10px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎓 AI 대학생 요약 전문가</h1>
+    <p class="desc">복잡한 전공 서적이나 논문을 핵심만 쏙쏙 요약해드립니다.</p>
+
+    <!-- API 키 입력 (보안상 사용자가 직접 입력하도록 구성) -->
+    <input type="password" id="apiKey" class="api-input" placeholder="Gemini API 키를 입력하세요">
+
+    <!-- 입력창 -->
+    <textarea id="inputText" placeholder="요약할 내용을 여기에 붙여넣으세요..."></textarea>
+
+    <!-- 실행 버튼 -->
+    <button id="sumBtn" onclick="summarizeText()">요약하기</button>
+
+    <!-- 로딩 표시 -->
+    <div id="loading" class="loading">요약 중입니다... 잠시만 기다려주세요.</div>
+
+    <!-- 결과 출력 영역 -->
+    <div id="result"></div>
+</div>
+
+<script>
+    async function summarizeText() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const inputText = document.getElementById('inputText').value.trim();
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.getElementById('loading');
+        const btn = document.getElementById('sumBtn');
+
+        // 유효성 검사
+        if (!apiKey) {
+            alert("Gemini API 키를 입력해주세요.");
+            return;
+        }
+        if (!inputText) {
+            alert("요약할 내용을 입력해주세요.");
+            return;
+        }
+
+        // UI 상태 업데이트
+        loadingDiv.style.display = 'block';
+        resultDiv.style.display = 'none';
+        btn.disabled = true;
+
+        // Gemini API 프롬프트 설계
+        const prompt = `당신은 대학생을 돕는 요약 전문가입니다. 다음 텍스트를 분석하여 대학생들이 이해하기 쉽게
+요약해주세요.
+
+출력 형식:
+1. 한 줄 요약: (전체 내용을 관통하는 핵심 문장)
+2. 핵심 3가지: (가장 중요한 포인트 3가지를 불렛포인트로)
+3. 키워드 5개: (주요 키워드 5개를 쉼표로 구분)
+
+대상 텍스트:
+${inputText}`;
+
+        try {
+            // Gemini 2.5 Flash 모델 API 호출
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                // 결과 출력
+                const resultText = data.candidates[0].content.parts[0].text;
+                resultDiv.innerText = resultText;
+                resultDiv.style.display = 'block';
+            } else {
+                throw new Error("API 응답 형식이 올바르지 않거나 오류가 발생했습니다.");
+            }
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("오류가 발생했습니다: " + error.message);
+        } finally {
+            // UI 복구
+            loadingDiv.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
